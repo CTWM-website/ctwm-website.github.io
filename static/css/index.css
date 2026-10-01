@@ -1,0 +1,182 @@
+/* CTWM project page ------------------------------------------------------
+   Single stylesheet, no framework. Sections alternate plain / .tinted.
+   Edit the tokens below to restyle the whole page.                        */
+
+:root {
+  --ink:        #1c1e21;
+  --ink-soft:   #4a4f55;
+  --bg:         #ffffff;
+  --bg-tint:    #f6f7f9;
+  --rule:       #e3e6ea;
+  --accent:     #b3642b;      /* batlow orange, matching the paper figures */
+  --accent-2:   #3c6c57;      /* batlow green */
+  --measure:    46rem;        /* readable line length */
+  --sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8eaed; --ink-soft: #b3b8bf; --bg: #15171a;
+    --bg-tint: #1c1f23; --rule: #2b2f35;
+    --accent: #e0964a; --accent-2: #6aa88c;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { width: min(72rem, 100% - 2.5rem); margin-inline: auto; }
+.container.narrow { width: min(var(--measure), 100% - 2.5rem); }
+.narrow-p { max-width: var(--measure); }
+
+section { padding-block: 3.25rem; }
+section.tinted { background: var(--bg-tint); border-block: 1px solid var(--rule); }
+
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.2; }
+h2 { font-size: 1.6rem; margin: 0 0 1rem; }
+h3 { font-size: 1.2rem; margin: 2rem 0 .5rem; }
+p  { margin: 0 0 1rem; }
+a  { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--ink); }
+
+/* ---- header ---- */
+.hero { padding-block: 3.5rem 2rem; text-align: center; border-bottom: 1px solid var(--rule); }
+.hero h1 { font-size: clamp(1.9rem, 4.5vw, 2.9rem); margin: 0 0 .4rem; letter-spacing: -0.01em; }
+.subtitle { font-family: var(--serif); font-size: 1.12rem; color: var(--ink-soft); margin: 0 0 1.5rem; }
+.authors { font-size: 1.02rem; margin: 0 0 .2rem; }
+.affil   { color: var(--ink-soft); font-size: .95rem; margin: 0 0 1.5rem; }
+
+.links { display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; margin: 0; }
+.btn {
+  display: inline-block; padding: .5rem 1.15rem; border-radius: 999px;
+  background: var(--ink); color: var(--bg); font-weight: 600; font-size: .95rem;
+  text-decoration: none; transition: transform .12s ease, opacity .12s ease;
+}
+.btn:hover { color: var(--bg); transform: translateY(-1px); }
+.btn[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+
+/* ---- media ---- */
+.teaser { padding-block: 2.5rem; }
+figure { margin: 0 0 1.5rem; }
+figure img, figure video { width: 100%; height: auto; display: block; border-radius: 6px; }
+figcaption {
+  margin-top: .6rem; font-size: .92rem; line-height: 1.5;
+  color: var(--ink-soft); max-width: var(--measure);
+}
+
+.two-col   { display: grid; gap: 1.75rem; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+.video-grid{ display: grid; gap: 1.75rem; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
+
+/* ---- tables ---- */
+.table-wrap { overflow-x: auto; margin-bottom: 2rem; }
+table { border-collapse: collapse; width: 100%; font-size: .96rem; }
+th, td { padding: .55rem .9rem; text-align: right; border-bottom: 1px solid var(--rule); }
+th:first-child, td:first-child { text-align: left; }
+thead th { border-bottom: 2px solid var(--ink); font-weight: 600; }
+tbody tr:last-child td { border-bottom: 2px solid var(--ink); }
+
+/* ---- math ---- */
+.equation { margin: 1.5rem 0; overflow-x: auto; }
+.katex-display { margin: 0; }
+
+/* ---- bibtex ---- */
+.bibtex {
+  background: var(--bg); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 1rem 1.15rem; overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .86rem; line-height: 1.55;
+}
+
+footer { padding-block: 2rem; border-top: 1px solid var(--rule); }
+footer p { font-size: .88rem; color: var(--ink-soft); margin: 0; }
+
+@media (max-width: 40rem) {
+  body { font-size: 16px; }
+  section { padding-block: 2.25rem; }
+}
+
+/* Figures that should break out of the narrow text column, and captions
+   centred under a full-width figure rather than ragged-left. */
+.container.narrow figure.wide { width: min(64rem, 92vw); margin-inline: calc(50% - min(32rem, 46vw)); }
+figure.wide img, figure.wide video { max-height: 78vh; object-fit: contain; }
+figcaption.centered { margin-inline: auto; text-align: center; }
+
+@media (max-width: 56rem) {
+  .container.narrow figure.wide { width: 100%; margin-inline: 0; }
+}
+
+/* Results table: two settings as separate tbody groups, with a spanning
+   sub-header, and the "ours" row lightly tinted so it reads at a glance. */
+tbody + tbody tr.group th { padding-top: 1.4rem; }
+tr.group th {
+  text-align: left; font-weight: 600; font-size: .9rem;
+  letter-spacing: .02em; text-transform: none;
+  color: var(--ink-soft); border-bottom: 1px solid var(--rule);
+}
+tr.ours td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+tr.ours td:first-child { font-weight: 600; }
+td strong { font-weight: 600; }
+p.note { font-size: .93rem; color: var(--ink-soft); }
+
+/* A single wide comparison clip, centred, one per environment. */
+figure.video-row { margin-inline: auto; max-width: 62rem; }
+figure.video-row video { width: 100%; height: auto; border-radius: 6px; }
+figure.video-row + figure.video-row { margin-top: 2rem; }
+
+/* Rollout comparisons: one row per environment, labels in HTML so the videos
+   stay unannotated and the columns can stack on a narrow screen. */
+.rollout + .rollout { margin-top: 2.25rem; }
+.rollout h3 { margin: 0 0 .6rem; font-size: 1.05rem; }
+.rollout-grid {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 54rem;
+}
+.rollout-grid figure { margin: 0; }
+.rollout-grid img, .rollout-grid video { width: 100%; border-radius: 5px; display: block; }
+.rollout-grid figcaption {
+  margin-top: .4rem; text-align: center; font-size: .9rem;
+  color: var(--ink); font-weight: 600;
+}
+.ours-tag { font-weight: 400; color: var(--ink-soft); }
+
+@media (max-width: 34rem) {
+  .rollout-grid { grid-template-columns: 1fr 1fr; }
+  .rollout-grid figure:first-child { grid-column: 1 / -1; max-width: 60%; margin-inline: auto; }
+}
+
+/* A schematic rather than a data figure: narrower than the text column would
+   allow, centred, with softened corners. */
+figure.diagram { max-width: 32rem; margin-inline: auto; }
+figure.diagram img { border-radius: 12px; }
+
+/* Figures exported with a transparent background need a white plate, or they
+   read as floating ink on the page's tint (and invert badly in dark mode). */
+figure.plate img {
+  background: #fff; border-radius: 10px;
+  padding: .75rem; border: 1px solid var(--rule);
+}
+
+/* Author line: names inline, widely spaced. Spacing is margin on the children
+   rather than flex `gap` so it does not depend on gap support, and the line
+   still wraps cleanly on a narrow screen. */
+.authors { display: flex; flex-wrap: wrap; justify-content: center; }
+.affil   { display: flex; flex-wrap: wrap; justify-content: center; }
+.authors > span { margin: .2rem 1.3rem; }
+.affil   > span { margin: .2rem 1rem; }
+.authors a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); }
+.authors a:hover { color: var(--accent); border-bottom-color: currentColor; }
+.authors sup { font-size: .68em; font-weight: 600; color: var(--ink-soft); }
+.equal { font-size: .88rem; color: var(--ink-soft); margin: .1rem 0 1.4rem; }

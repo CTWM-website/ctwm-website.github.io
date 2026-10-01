@@ -3,8 +3,428 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Coming soon</title>
+  <title>CTWM: Commute-Time World Models</title>
+  <meta name="description" content="A JEPA world model whose latent geometry is the commute-time embedding of the environment's transition graph.">
+
+  <!-- Open Graph / Twitter: fill in the absolute URL and a preview image once
+       the site is live (og:image wants a raster, ~1200x630). -->
+  <meta property="og:title" content="CTWM: Commute-Time World Models">
+  <meta property="og:description" content="A JEPA world model whose latent geometry is the commute-time embedding of the environment's transition graph.">
+  <meta property="og:image" content="static/images/theory.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/index.css?v=2">
+
+  <!-- KaTeX for the objective and the theorem. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script defer src="static/js/index.js"></script>
 </head>
+
 <body>
+
+<!-- ===================== TITLE ===================== -->
+<header class="hero">
+  <div class="container">
+    <h1>Commute-Time World Models</h1>
+    <p class="subtitle">Learning Commute-Time-Preserving World Models for Planning</p>
+
+    <p class="authors">
+      <span>Michael Hauri<sup>*,1,2</sup></span>
+      <span>Peter Buttaroni<sup>*,1,2</sup></span>
+      <span>Fabian A. Mikulasch<sup>1</sup></span>
+      <span>Friedemann Zenke<sup>1,2</sup></span>
+    </p>
+    <p class="affil">
+      <span><sup>1</sup>Friedrich Miescher Institute for Biomedical Research, Basel, Switzerland</span>
+      <span><sup>2</sup>Faculty of Science, University of Basel, Switzerland</span>
+    </p>
+    <p class="equal"><sup>*</sup>Equal contribution</p>
+
+
+    <nav class="links">
+      <a class="btn" href="#" aria-disabled="true">Paper</a>
+      <a class="btn" href="https://github.com/fmi-basel/commute-time-preserving-world-models">Code</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ===================== ABSTRACT ===================== -->
+<section id="abstract">
+  <div class="container narrow">
+    <h2>Abstract</h2>
+    <p>
+      World models allow agents to plan in latent space by choosing a sequence of actions that most reduces the distance to a given goal state.
+      Thus, planning can benefit from latent representations whose distances mirror commute-times in the environment.
+      The spectral embedding space of the graph Laplacian provides such a representation, if it obeys a specific eigenvalue-dependent scaling.
+      Unfortunately, instantiating the graph Laplacian is intractable in large, continuous environments.
+      Self-supervised learning offers a natural route to such commute-time-preserving embeddings at scale.
+      However, here we show that existing methods, which commonly encourage isotropic representations to prevent representational collapse, tend to degrade the &ldquo;correct&rdquo; eigenvalue-dependent scaling, leading to an inaccurate representation of commute times.
+      To address this problem, we introduce Commute-Time-Preserving World Models (CTWM), combining a latent displacement predictor and a log-determinant regularizer that prevents collapse, which provably recover the correctly scaled Laplacian representation under deterministic dynamics and at the predictor's fixed point.
+      In numerical simulations, CTWM matches or outperforms <a href="https://arxiv.org/abs/2603.19312">LeWM</a>, a task-agnostic baseline, on several complex, continuous goal-reaching benchmarks, while using half the parameters.
+    </p>
+  </div>
+</section>
+
+<!-- ============ THEORY: the objective, then the parameter-free check ====== -->
+<section id="theory" class="tinted">
+  <div class="container narrow">
+    <h2>Preserving the topology of the environment</h2>
+
+    <p>
+      Goal-conditioned planning selects the action sequence minimising
+      \(\lVert \phi(s_H) - \phi(g) \rVert^2\), the latent distance between the
+      predicted terminal state and the encoded goal. The latent geometry must
+      therefore reflect a <em>temporal</em> distance rather than the Euclidean
+      distance in observation space. One such distance is the commute time
+      \(C(s, s')\), the expected number of steps for a random walk to travel from
+      \(s\) to \(s'\) and back, which ties the representation to the graph
+      underlying the MDP.
+    </p>
+
+    <figure class="diagram">
+      <img src="static/images/theory.png" alt="Two states either side of a wall are close in the environment but far apart in the latent space">
+      <figcaption class="centered">
+        \(s_1\) and \(s_3\) are adjacent but separated by a wall; \(s_2\) is
+        farther on the map yet closer in time. The latent space reverses the
+        ordering.
+      </figcaption>
+    </figure>
+
+    <p>
+      An encoder \(\phi\) maps observations to latents; a predictor \(T\)
+      models an action <em>as a displacement</em>,
+      \(\phi(s') = \phi(s) + T(\phi(s), a)\). Both are trained jointly:
+    </p>
+
+    <div class="equation">
+      \[
+        \mathcal{L} \;=\;
+        \underbrace{\bigl\lVert \phi(s') - \phi(s) - T \bigr\rVert^2}_{\text{prediction}}
+        \;+\; \beta \underbrace{\lVert T \rVert^2}_{\text{displacement}}
+        \;-\; \frac{\gamma}{2}\underbrace{\log\det \mathrm{Cov}(\phi)}_{\text{log-det}}
+      \]
+    </div>
+
+    <p>
+      The penalty \(\beta\) forces the encoder to keep consecutive states close,
+      while the log-determinant prevents collapse. Unlike other regularizers, it
+      recovers not just the right eigendirections but the right <em>scaling</em>,
+      so that
+    </p>
+
+    <div class="equation">
+      \[
+        \lVert \phi(s) - \phi(g) \rVert^2 \;\propto\; C_d(s, g),
+      \]
+    </div>
+
+    <p>
+      with \(C_d\) the truncated commute time on the transition graph.
+    </p>
+
+    <!-- The spectrum figure goes here once it is final:
+         <figure class="wide">
+           <img src="static/images/spectrum.svg" alt="Measured covariance spectrum against the parameter-free prediction">
+           <figcaption class="centered">...</figcaption>
+         </figure> -->
+  </div>
+</section>
+
+<!-- ============ BASELINE ============ -->
+<section id="baseline" class="tinted">
+  <div class="container">
+    <h2>Baseline</h2>
+
+    <p class="narrow-p">
+      The baseline throughout is
+      <a href="https://arxiv.org/abs/2603.19312">LeWM</a>, a task-agnostic world
+      model trained end-to-end from pixels without reconstruction, using SIGReg
+      to prevent collapse. CTWM inherits most of its architecture, and changes mainly the training objective. The
+      implementation builds on the LeWM
+      <a href="https://github.com/lucas-maes/le-wm">code release</a>.
+    </p>
+  </div>
+</section>
+
+<!-- ============ THE WALL TEST: the distance field in the maze ============ -->
+<section id="geometry">
+  <div class="container">
+    <h2>Distance to goal</h2>
+
+    <figure class="wide plate">
+      <img src="static/images/site_distances.svg" alt="Latent distance from a reference state, drawn in maze coordinates, for the ground truth and for each model">
+      <figcaption class="centered">
+        Distance from the reference state (&#9733;) for LeWM and CTWM. 
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ LATENT STRUCTURE: the helix ============ -->
+<section id="latent" class="tinted">
+  <div class="container">
+    <h2>Latent representation</h2>
+    <p class="narrow-p">
+      The structure of the configuration space is visible directly in the
+      representation after applying PCA.
+    </p>
+
+    <div class="two-col">
+      <figure>
+        <video controls muted loop playsinline preload="metadata">
+          <source src="static/videos/reacher_helix_lewm.mp4" type="video/mp4">
+        </video>
+        <figcaption>LeWM</figcaption>
+      </figure>
+      <figure>
+        <video controls muted loop playsinline preload="metadata">
+          <source src="static/videos/reacher_helix_obsleft.mp4" type="video/mp4">
+        </video>
+        <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RESULTS ===================== -->
+<section id="results">
+  <div class="container">
+    <h2>Planning results</h2>
+    <p class="narrow-p">
+      Success rate after ten epochs, three seeds per entry, planning with CEM in
+      latent space. Goals are states a held-out demonstration reached a fixed
+      number of steps later. The random policy is the floor for each setting and
+      environment.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Success rate</th>
+            <th>Reacher</th><th>Cube</th><th>Two-Room</th>
+            <th>PushT</th><th>Scene</th><th>PointMaze</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr class="group"><th colspan="7">Goal 25 steps, planning budget 50 steps</th></tr>
+          <tr>
+            <td>Random</td>
+            <td>13.0 &plusmn; 2.3%</td><td>45.2 &plusmn; 0.9%</td><td>24.3 &plusmn; 2.7%</td>
+            <td>4.3 &plusmn; 2.1%</td><td>49.8 &plusmn; 3.1%</td><td>14.3 &plusmn; 1.7%</td>
+          </tr>
+          <tr>
+            <td>LeWM</td>
+            <td><strong>83.3 &plusmn; 2.1%</strong></td><td>64.8 &plusmn; 1.3%</td><td>88.8 &plusmn; 1.6%</td>
+            <td>91.5 &plusmn; 1.1%</td><td>69.3 &plusmn; 2.6%</td><td>68.5 &plusmn; 1.8%</td>
+          </tr>
+          <tr class="ours">
+            <td>CTWM</td>
+            <td>82.3 &plusmn; 2.6%</td><td><strong>89.8 &plusmn; 1.0%</strong></td><td><strong>100.0 &plusmn; 0.0%</strong></td>
+            <td><strong>92.2 &plusmn; 0.6%</strong></td><td><strong>82.3 &plusmn; 1.4%</strong></td><td><strong>100.0 &plusmn; 0.0%</strong></td>
+          </tr>
+        </tbody>
+
+        <tbody>
+          <tr class="group"><th colspan="7">Goal 100 steps, planning budget 125 steps</th></tr>
+          <tr>
+            <td>Random</td>
+            <td>7.3 &plusmn; 1.9%</td><td>45.5 &plusmn; 2.5%</td><td>1.0 &plusmn; 0.4%</td>
+            <td>0.3 &plusmn; 0.2%</td><td>24.2 &plusmn; 1.7%</td><td>11.3 &plusmn; 1.0%</td>
+          </tr>
+          <tr>
+            <td>LeWM</td>
+            <td>81.0 &plusmn; 0.8%</td><td>61.7 &plusmn; 1.4%</td><td>17.3 &plusmn; 0.8%</td>
+            <td>15.3 &plusmn; 1.4%</td><td>40.3 &plusmn; 2.5%</td><td>28.2 &plusmn; 1.2%</td>
+          </tr>
+          <tr class="ours">
+            <td>CTWM</td>
+            <td><strong>98.2 &plusmn; 0.8%</strong></td><td><strong>73.0 &plusmn; 1.2%</strong></td><td><strong>98.3 &plusmn; 0.9%</strong></td>
+            <td><strong>26.5 &plusmn; 2.6%</strong></td><td><strong>57.5 &plusmn; 1.6%</strong></td><td><strong>98.8 &plusmn; 0.2%</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="narrow-p note">
+      The gap widens with the goal distance: at 100 steps LeWM
+      degrades sharply on the environments.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== BIBTEX ===================== -->
+<!-- ============ ROLLOUTS: one comparison per environment ============
+     Labels live in the HTML, not burnt into the videos: the goal is a still
+     (it never moves), the two rollouts are the cropped agent panel. -->
+<section id="rollouts" class="tinted">
+  <div class="container">
+    <h2>Rollouts</h2>
+
+      <p class="narrow-p">
+        Rollouts in the harder setting: the goal is 100 steps ahead
+        with a 125-step planning budget, rather than the usual 25/50. Examples where CTWM
+        reaches the goal and LeWM does not.
+      </p>
+
+      <div class="rollout">
+        <h3>Reacher</h3>
+        <div class="rollout-grid">
+          <figure>
+            <img src="static/videos/reacher/goal.png" alt="Reacher: the goal state">
+            <figcaption>Goal</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/reacher/lewm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>LeWM</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/reacher/ctwm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="rollout">
+        <h3>Cube</h3>
+        <div class="rollout-grid">
+          <figure>
+            <img src="static/videos/cube/goal.png" alt="Cube: the goal state">
+            <figcaption>Goal</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/cube/lewm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>LeWM</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/cube/ctwm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="rollout">
+        <h3>Two-Room</h3>
+        <div class="rollout-grid">
+          <figure>
+            <img src="static/videos/tworoom/goal.png" alt="Two-Room: the goal state">
+            <figcaption>Goal</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/tworoom/lewm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>LeWM</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/tworoom/ctwm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="rollout">
+        <h3>PushT</h3>
+        <div class="rollout-grid">
+          <figure>
+            <img src="static/videos/pusht/goal.png" alt="PushT: the goal state">
+            <figcaption>Goal</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/pusht/lewm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>LeWM</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/pusht/ctwm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="rollout">
+        <h3>Scene</h3>
+        <div class="rollout-grid">
+          <figure>
+            <img src="static/videos/scene/goal.png" alt="Scene: the goal state">
+            <figcaption>Goal</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/scene/lewm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>LeWM</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/scene/ctwm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="rollout">
+        <h3>PointMaze</h3>
+        <div class="rollout-grid">
+          <figure>
+            <img src="static/videos/pointmaze/goal.png" alt="PointMaze: the goal state">
+            <figcaption>Goal</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/pointmaze/lewm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>LeWM</figcaption>
+          </figure>
+          <figure>
+            <video muted loop playsinline preload="metadata">
+              <source src="static/videos/pointmaze/ctwm_agent.mp4" type="video/mp4">
+            </video>
+            <figcaption>CTWM <span class="ours-tag">(ours)</span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+</section>
+
+<section id="bibtex" class="tinted">
+  <div class="container narrow">
+    <h2>Citation</h2>
+<pre class="bibtex">
+  
+</pre>
+  </div>
+</section>
+
+<footer>
+  <div class="container narrow">
+    <p>
+      Page built from the
+      <a href="https://github.com/eliahuhorwitz/Academic-project-page-template">academic project page</a>
+      layout. Content licensed
+      <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+    </p>
+  </div>
+</footer>
+
 </body>
 </html>
